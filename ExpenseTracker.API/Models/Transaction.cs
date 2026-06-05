@@ -21,7 +21,7 @@ namespace ExpenseTracker.API.Models
         public DateTime Date { get; set; }
 
         [StringLength(255)]
-        public string Description { get; set; }
+        public string? Description { get; set; }
 
         [Required]
         public TransactionType Type { get; set; }
@@ -30,6 +30,6 @@ namespace ExpenseTracker.API.Models
         public int CategoryId { get; set; }
 
         [ForeignKey("CategoryId")]
-        public Category Category { get; set; }
+        public Category? Category { get; set; }
     }
 }

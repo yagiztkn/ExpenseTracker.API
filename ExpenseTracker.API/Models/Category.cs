@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace ExpenseTracker.API.Models
 {
@@ -9,9 +10,10 @@ namespace ExpenseTracker.API.Models
         
         [Required]
         [StringLength(50)]
-        public string Name { get; set; }
-
-        public List<Transaction> Transactions { get; set; }
+        public string? Name { get; set; }
+        
+        [JsonIgnore]
+        public List<Transaction>? Transactions { get; set; }
 
     }
 }
