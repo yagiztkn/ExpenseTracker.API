@@ -38,5 +38,46 @@ namespace ExpenseTracker.API.Controllers
             await _context.SaveChangesAsync();
             return Ok(transaction);
         }
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateTransaction(int id, Transaction transaction)
+        {
+            if (id != transaction.Id)
+            {
+                return BadRequest("Güncellenmek istenen harcama ID'si uyuşmuyor!");
+            }
+
+            _context.Transactions.Update(transaction);
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch(DbUpdateConcurrencyException)
+            {
+                if (!_context.Transactions.Any(t => t.Id == id))
+                {
+                    return NotFound("Güncellenmek istenen harcama bulunamadı!");
+                }
+                throw;
+            }
+
+            return Ok("Harcama başarıyla güncellendi!");
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteTransaction(int id)
+        {
+            var transaction = await _context.Transactions.FindAsync(id);
+                
+            if (transaction == null)
+            {
+                return NotFound("Silinmek istenen harcama bulunamadı!");
+            }
+            _context.Transactions.Remove(transaction);
+            await _context.SaveChangesAsync();
+            return Ok("Harcama başarıyla silindi!");
+        }
+       
     }
 }
