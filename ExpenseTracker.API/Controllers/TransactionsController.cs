@@ -3,6 +3,7 @@ using ExpenseTracker.API.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography.X509Certificates;
+using ExpenseTracker.API.DTOs;
 
 namespace ExpenseTracker.API.Controllers
 {
@@ -22,17 +23,29 @@ namespace ExpenseTracker.API.Controllers
         {
             var transactions = await _context.Transactions
                                                           .Include(t => t.Category)
+                                                          .Select(t => new TransactionDto
+                                                          {
+                                                              Id = t.Id,
+                                                              Amount = t.Amount,
+                                                              Description = t.Description,
+                                                              Date = t.Date,
+                                                              CategoryName = t.Category != null ? t.Category.Name : "Kategori Yok"
+                                                          })
                                                           .ToListAsync();
             return Ok(transactions);
         }
 
         [HttpPost]
-        public async Task<IActionResult> AddTransaction(Transaction transaction)
+        public async Task<IActionResult> AddTransaction(CreateTransactionDto transactionDto)
         {
-            if (transaction.Date == default)
+            var transaction = new Transaction
             {
-                transaction.Date = DateTime.UtcNow;
-            }
+                Amount = transactionDto.Amount,
+                Description = transactionDto.Description,
+                Type = (TransactionType)transactionDto.Type,
+                CategoryId = transactionDto.CategoryId,
+                Date = DateTime.Now  
+            };
 
             _context.Transactions.Add(transaction);
             await _context.SaveChangesAsync();
@@ -78,6 +91,22 @@ namespace ExpenseTracker.API.Controllers
             await _context.SaveChangesAsync();
             return Ok("Harcama başarıyla silindi!");
         }
-       
+
+        [HttpGet("total")]
+        public async Task<IActionResult> GetTotalTransactions()
+        {
+            var total = await _context.Transactions.SumAsync(t => t.Amount);
+            return Ok(new { TotalExpense = total });
+        }
+
+        [HttpGet("category/{categoryId}")]
+        public async Task<IActionResult> GetTransactionsByCategory(int categoryId)
+        {
+            var transactions = await _context.Transactions
+                                .Where(t => t.CategoryId == categoryId)
+                                .Include(t => t.Category)
+                                .ToListAsync();
+            return Ok(transactions);
+        }
     }
 }
