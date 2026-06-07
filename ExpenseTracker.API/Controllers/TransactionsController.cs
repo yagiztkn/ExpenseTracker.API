@@ -11,7 +11,7 @@ namespace ExpenseTracker.API.Controllers
     [Route("api/[controller]")]
     public class TransactionsController : ControllerBase
     {
-        private readonly AppDbContext _context; 
+        private readonly AppDbContext _context;
 
         public TransactionsController(AppDbContext context)
         {
@@ -19,19 +19,35 @@ namespace ExpenseTracker.API.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetTransactions()
+        public async Task<IActionResult> GetTransactions([FromQuery] string? shortBy)
         {
-            var transactions = await _context.Transactions
-                                                          .Include(t => t.Category)
-                                                          .Select(t => new TransactionDto
-                                                          {
-                                                              Id = t.Id,
-                                                              Amount = t.Amount,
-                                                              Description = t.Description,
-                                                              Date = t.Date,
-                                                              CategoryName = t.Category != null ? t.Category.Name : "Kategori Yok"
-                                                          })
-                                                          .ToListAsync();
+            var query = _context.Transactions.Include(t => t.Category).AsQueryable();
+
+            if (shortBy == "dateDesc")
+            {
+                query = query.OrderByDescending(t => t.Date);
+
+            }
+            else if (shortBy == "amountDesc")
+            {
+                query = query.OrderByDescending(t => t.Amount);
+            }
+            else
+            {
+                query = query.OrderByDescending(t => t.Date);
+            }
+
+            var transactions = await query
+                .Select(t => new
+                {
+                    ıd=t.Id,
+                    amount = t.Amount,
+                    Description = t.Description,
+                    Date = t.Date,
+                    CategoryName = t.Category != null ? t.Category.Name : "Kategori Yok",
+
+                }) 
+                .ToListAsync();
             return Ok(transactions);
         }
 

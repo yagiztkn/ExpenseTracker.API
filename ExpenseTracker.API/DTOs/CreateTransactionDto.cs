@@ -6,7 +6,7 @@ namespace ExpenseTracker.API.DTOs
     {
         [Required(ErrorMessage = "Harcama Tutarı Girmek Zorunludur!")]
         [Range(0.01, 1000000, ErrorMessage = "Harcama Tutarı 0'dan büyük olmalıdır!")]
-        public decimal Amount { get; set; }
+        public decimal Amount { get; set; } 
 
 
         [MaxLength(100, ErrorMessage = "Harcama Açıklaması 100 karakterden fazla olamaz!")] 

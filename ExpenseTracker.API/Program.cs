@@ -1,5 +1,6 @@
 using ExpenseTracker.API.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,6 +10,17 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 // 2. Controller (Garson) altyapısını ekliyoruz
 builder.Services.AddControllers();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin() //Herhangi bir kaynaktan gelen isteklere izin ver
+              .AllowAnyMethod() //Herhangi bir HTTP metoduna izin ver (GET, POST, PUT, DELETE, vb.)
+              .AllowAnyHeader();//Herhangi bir HTTP başlığına izin ver
+    });
+
+});
 
 // 3. Swagger (Arayüz) test ekranı için gereken servisleri ekliyoruz
 builder.Services.AddEndpointsApiExplorer();
