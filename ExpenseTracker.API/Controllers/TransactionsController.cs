@@ -27,8 +27,14 @@ namespace ExpenseTracker.API.Controllers
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10)
          {
+            int currentUserId = GetCurrentUserId();
 
-            var query = _context.Transactions.Include(t => t.Category).AsQueryable();
+                
+
+            var query = _context.Transactions
+                .Include(t => t.Category)
+                .Where(t => t.UserId == currentUserId)
+                .AsQueryable();
 
             if (shortBy == "dateDesc")
                 query = query.OrderByDescending(t => t.Date);
@@ -72,7 +78,9 @@ namespace ExpenseTracker.API.Controllers
                 Description = transactionDto.Description,
                 Type = (TransactionType)transactionDto.Type,
                 CategoryId = transactionDto.CategoryId,
-                Date = DateTime.Now  
+                Date = DateTime.Now,
+
+                UserId = GetCurrentUserId()
             };
 
             _context.Transactions.Add(transaction);
@@ -136,5 +144,12 @@ namespace ExpenseTracker.API.Controllers
                                 .ToListAsync();
             return Ok(transactions);
         }
+
+        private int GetCurrentUserId()
+        {
+            var UserIdString = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            return int.Parse(UserIdString!);    
+        }
     }
 }
+
