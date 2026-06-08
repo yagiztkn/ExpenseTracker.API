@@ -1,14 +1,16 @@
-﻿using ExpenseTracker.API.Data;
+﻿    using ExpenseTracker.API.Data;
 using ExpenseTracker.API.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography.X509Certificates;
 using ExpenseTracker.API.DTOs;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ExpenseTracker.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class TransactionsController : ControllerBase
     {
         private readonly AppDbContext _context;

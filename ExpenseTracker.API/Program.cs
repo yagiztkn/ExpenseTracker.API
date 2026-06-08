@@ -1,7 +1,11 @@
 using ExpenseTracker.API.Data;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
+using System.Text;
+    
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. Veritabanı köprümüzü kuruyoruz
@@ -22,9 +26,39 @@ builder.Services.AddCors(options =>
 
 });
 
+
+
 // 3. Swagger (Arayüz) test ekranı için gereken servisleri ekliyoruz
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Token'ınızı buraya girin. Örnek: Bearer eyJhbGci...",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    {
+        [new OpenApiSecuritySchemeReference("Bearer", document)] = []
+
+    });
+}); 
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+{
+ options.TokenValidationParameters = new TokenValidationParameters
+ {
+     ValidateIssuerSigningKey = true,
+     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration.GetSection("AppSettings:Token").Value!)),
+     ValidateIssuer = false,
+     ValidateAudience = false
+ };
+});
 
 var app = builder.Build();
 
@@ -36,6 +70,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseAuthentication();
 app.UseAuthorization();
 
 // 5. Yazdığımız CategoriesController gibi garsonları sahneye çağırıyoruz
