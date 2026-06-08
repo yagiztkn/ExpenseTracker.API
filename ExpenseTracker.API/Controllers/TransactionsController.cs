@@ -91,25 +91,27 @@ namespace ExpenseTracker.API.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateTransaction(int id, Transaction transaction)
         {
-            if (id != transaction.Id)
-            {
-                return BadRequest("Güncellenmek istenen harcama ID'si uyuşmuyor!");
-            }
+             int currentUserId = GetCurrentUserId();
+             var existingTransaction = _context.Transactions.FirstOrDefault(t => t.Id == id);    
 
-            _context.Transactions.Update(transaction);
+             if (existingTransaction != null)
+             {
+                return NotFound("Güncellenmek istenen harcama bulunamadı!");
+             }
 
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch(DbUpdateConcurrencyException)
-            {
-                if (!_context.Transactions.Any(t => t.Id == id))
-                {
-                    return NotFound("Güncellenmek istenen harcama bulunamadı!");
-                }
-                throw;
-            }
+             if (existingTransaction.UserId != currentUserId)
+             {
+                return StatusCode(403, "Güvenlik İhlali: Bu harcamayı güncelleme yetkiniz yok!");
+             }
+
+             existingTransaction.Amount = transaction.Amount;
+             existingTransaction.Description = transaction.Description;  
+             existingTransaction.Type = (TransactionType)transaction.Type;
+             existingTransaction.CategoryId = transaction.CategoryId;
+             existingTransaction.Date = DateTime.Now;
+
+            _context.Transactions.Add(existingTransaction);
+            await _context.SaveChangesAsync();
 
             return Ok("Harcama başarıyla güncellendi!");
         }
@@ -117,14 +119,23 @@ namespace ExpenseTracker.API.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteTransaction(int id)
         {
-            var transaction = await _context.Transactions.FindAsync(id);
-                
-            if (transaction == null)
+            int currentUserId = GetCurrentUserId();
+
+            var transaction = _context.Transactions.FirstOrDefault(t => t.Id == id);
+
+            if (transaction != null)
             {
                 return NotFound("Silinmek istenen harcama bulunamadı!");
             }
+
+            if (transaction.UserId != currentUserId)
+            {
+                return StatusCode(403, "Güvenlik İhlali: Bu harcamayı silme yetkiniz yok!");
+            }
+
             _context.Transactions.Remove(transaction);
             await _context.SaveChangesAsync();
+
             return Ok("Harcama başarıyla silindi!");
         }
 
@@ -144,6 +155,7 @@ namespace ExpenseTracker.API.Controllers
                                 .ToListAsync();
             return Ok(transactions);
         }
+        
 
         private int GetCurrentUserId()
         {
