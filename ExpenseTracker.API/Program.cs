@@ -6,8 +6,17 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using System.Text;
-    
+using Serilog;
+
 var builder = WebApplication.CreateBuilder(args);
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Debug()
+    .WriteTo.Console()
+    .WriteTo.File("logs/log-.txt", rollingInterval: RollingInterval.Day)
+    .CreateBootstrapLogger();
+
+builder.Host.UseSerilog();
 
 // 1. Veritabanı köprümüzü kuruyoruz
 builder.Services.AddDbContext<AppDbContext>(options =>
