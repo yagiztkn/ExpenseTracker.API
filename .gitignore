@@ -480,3 +480,8 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Yago Code Özel Engelleme Listesi
+logs/
+YagoCode_Log-*.txt
+appsettings.json
