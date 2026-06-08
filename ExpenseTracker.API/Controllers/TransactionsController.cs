@@ -19,36 +19,46 @@ namespace ExpenseTracker.API.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetTransactions([FromQuery] string? shortBy)
-        {
+        public async Task<IActionResult> GetTransactions(
+        
+            [FromQuery] string? shortBy,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
+         {
+
             var query = _context.Transactions.Include(t => t.Category).AsQueryable();
 
             if (shortBy == "dateDesc")
-            {
+                query = query.OrderByDescending(t => t.Date);
+            else if (shortBy == "amountDesc")            
+                query = query.OrderByDescending(t => t.Amount);          
+            else
                 query = query.OrderByDescending(t => t.Date);
 
-            }
-            else if (shortBy == "amountDesc")
-            {
-                query = query.OrderByDescending(t => t.Amount);
-            }
-            else
-            {
-                query = query.OrderByDescending(t => t.Date);
-            }
+            var totalRecords = await query.CountAsync();
+
 
             var transactions = await query
-                .Select(t => new
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .Select(t => new TransactionDto
                 {
-                    ıd=t.Id,
-                    amount = t.Amount,
+                    Id = t.Id,
+                    Amount= t.Amount,
                     Description = t.Description,
                     Date = t.Date,
                     CategoryName = t.Category != null ? t.Category.Name : "Kategori Yok",
 
                 }) 
                 .ToListAsync();
-            return Ok(transactions);
+            return Ok(new
+            {
+                TotalRecords = totalRecords,
+                CurrentPage = pageNumber,
+                PageSize = pageSize,
+                TotalPages = (int)Math.Ceiling(totalRecords / (double)pageSize),
+                Data = transactions
+            });
         }
 
         [HttpPost]
