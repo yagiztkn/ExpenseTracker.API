@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography.X509Certificates;
 using ExpenseTracker.API.DTOs;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace ExpenseTracker.API.Controllers
 {
@@ -140,22 +141,45 @@ namespace ExpenseTracker.API.Controllers
         }
 
         [HttpGet("total")]
+        [Authorize]
         public async Task<IActionResult> GetTotalTransactions()
         {
-            var total = await _context.Transactions.SumAsync(t => t.Amount);
-            return Ok(new { TotalExpense = total });
-        }
+            var UserIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(UserIdString))
+            {
+                return BadRequest("Kullanıcı kimliği bulunamadı.");
+            }
+            var userId = int.Parse(UserIdString);
 
-        [HttpGet("category/{categoryId}")]
+            var total = await _context.Transactions
+                .Where(t => t.UserId == userId)
+                .SumAsync(t => t.Amount);   
+
+            return Ok(new { TotalAmount = total });
+        }   
+        
+
+            [HttpGet("category/{categoryId}")]
+            [Authorize]
         public async Task<IActionResult> GetTransactionsByCategory(int categoryId)
         {
+         var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdString))
+            {
+                return BadRequest("Kullanıcı kimliği bulunamadı.");
+            }
+
+            var userId = int.Parse(userIdString);
+
             var transactions = await _context.Transactions
-                                .Where(t => t.CategoryId == categoryId)
-                                .Include(t => t.Category)
-                                .ToListAsync();
-            return Ok(transactions);
+                .Where(t => t.UserId == userId && t.CategoryId == categoryId)
+                .Include(t => t.Category)
+                .ToListAsync();
+
+            return Ok(new { transactions });
         }
-        
+
+
 
         private int GetCurrentUserId()
         {
