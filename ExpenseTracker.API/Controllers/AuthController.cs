@@ -64,7 +64,67 @@ namespace ExpenseTracker.API.Controllers
             }
 
             string token = CreateToken(user);
-            return Ok(new { Token = token });
+            var refreshToken = GenerateRefreshToken();
+
+            user.RefreshToken = refreshToken;
+            user.RefreshTokenExpiryTime = DateTime.Now.AddDays(7); // Refresh token 7 gün geçerli olsun
+
+            _context.Users.Update(user);
+            await _context.SaveChangesAsync();
+
+            return Ok(new 
+            { 
+                Token = token,
+                RefreshToken = refreshToken
+            });
+        }
+
+        [HttpPost("refresh-token")]
+        public async Task<IActionResult> RefreshToken(RefreshTokenDto dto)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.RefreshToken == dto.RefreshToken);
+            if (user == null || user.RefreshTokenExpiryTime <= DateTime.Now)
+            {
+                return BadRequest("Geçersiz veya süresi dolmuş yenileme anahtarı. Lütfen tekrar giriş yapın.");
+            }
+            var newAcsessToken = CreateToken(user);
+            var newRefreshToken = GenerateRefreshToken();
+            user.RefreshToken = newRefreshToken;
+            user.RefreshTokenExpiryTime = DateTime.Now.AddDays(7);
+           
+            _context.Users.Update(user);
+            await _context.SaveChangesAsync();
+            return Ok(new
+            {
+                Token = newAcsessToken,
+                RefreshToken = newRefreshToken
+            });
+        }
+
+        [HttpPost("revoke-token")]
+        public async Task<IActionResult> Revoke(RefreshTokenDto dto)
+        {
+            var UserIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(UserIdString))
+            {
+                return BadRequest("Kullanıcı kimliği bulunamadı."); 
+            }
+
+            var userId = int.Parse(UserIdString);
+
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
+            {
+                return BadRequest("Kullanıcı bulunamadı.");
+            }
+            
+            user.RefreshToken = null;
+            user.RefreshTokenExpiryTime = null;
+
+            _context.Users.Update(user);
+            await _context.SaveChangesAsync();
+
+            return Ok("Çıkış işlemi başarılı, güvenlik anahtarları imha edildi.");
         }
 
         private bool VerifyPasswordHash(string password, byte[] PasswordHash, byte[] PasswordSalt)
@@ -92,7 +152,7 @@ namespace ExpenseTracker.API.Controllers
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.Now.AddDays(7),  
+                Expires = DateTime.Now.AddMinutes(15),  
                 SigningCredentials = creds
             };
 
@@ -112,7 +172,16 @@ namespace ExpenseTracker.API.Controllers
                 passwordHash = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
             }
         }
-    }
+    
 
     
+    private string GenerateRefreshToken()
+        {
+            var randomNumber = new byte[32];
+            using var rng = System.Security.Cryptography.RandomNumberGenerator.Create();
+            rng.GetBytes(randomNumber);
+            return Convert.ToBase64String(randomNumber);
+        }
+    }
 }
+
