@@ -95,7 +95,7 @@ namespace ExpenseTracker.API.Controllers
              int currentUserId = GetCurrentUserId();
              var existingTransaction = _context.Transactions.FirstOrDefault(t => t.Id == id);    
 
-             if (existingTransaction != null)
+             if (existingTransaction == null)
              {
                 return NotFound("Güncellenmek istenen harcama bulunamadı!");
              }
@@ -111,7 +111,7 @@ namespace ExpenseTracker.API.Controllers
              existingTransaction.CategoryId = transaction.CategoryId;
              existingTransaction.Date = DateTime.Now;
 
-            _context.Transactions.Add(existingTransaction);
+            _context.Transactions.Update(existingTransaction);
             await _context.SaveChangesAsync();
 
             return Ok("Harcama başarıyla güncellendi!");
@@ -124,7 +124,7 @@ namespace ExpenseTracker.API.Controllers
 
             var transaction = _context.Transactions.FirstOrDefault(t => t.Id == id);
 
-            if (transaction != null)
+            if (transaction == null)
             {
                 return NotFound("Silinmek istenen harcama bulunamadı!");
             }
@@ -186,6 +186,57 @@ namespace ExpenseTracker.API.Controllers
             var UserIdString = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             return int.Parse(UserIdString!);    
         }
+
+        [HttpGet("summary")]
+        public async Task<IActionResult> GetSummary()
+        {
+            int userId = GetCurrentUserId();
+
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
+            {
+                return NotFound("Kullanıcı bulunamadı!");
+            }
+
+            var totalIncome = await _context.Transactions
+                .Where(t => t.UserId == userId && t.Type == TransactionType.Income)
+                .SumAsync(t => t.Amount);
+
+            var totalExpenses = await _context.Transactions
+                .Where(t => t.UserId == userId && t.Type == TransactionType.Expense)
+                .SumAsync(t => t.Amount);
+
+           var summary = new DashboardSummaryDto
+           {
+               TotalIncome = totalIncome,
+               TotalExpenses = totalExpenses,
+               CurrentBalance = totalIncome - totalExpenses,
+               MonthlyBudget = user.MonthlyBudget,
+               BudgetUsagePercentage = 0,
+               BudgetWarningMessage = "Bütçe belirlenmedi."
+           };
+            
+            if (user.MonthlyBudget.HasValue && user.MonthlyBudget.Value > 0)
+            {
+                summary.BudgetUsagePercentage = Math.Round((totalExpenses / user.MonthlyBudget.Value) * 100, 2); 
+
+                if (summary.BudgetUsagePercentage >= 100)
+                {
+                    summary.BudgetWarningMessage = "🚨 Kritik Uyarı: Aylık bütçenizi tamamen aştınız!";
+                }
+                else if (summary.BudgetUsagePercentage >= 80)
+                {
+                    summary.BudgetWarningMessage = "⚠️ Dikkat: Aylık bütçenizin %80'inden fazlasını kullandınız.";
+                }
+                else
+                {
+                    summary.BudgetWarningMessage = "✅ Harika! Bütçe hedefleriniz doğrultusunda ilerliyorsunuz.";
+                }
+            }
+
+            return(Ok(summary));
+        }
     }
+    
 }
 

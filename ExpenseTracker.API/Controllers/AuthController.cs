@@ -182,6 +182,31 @@ namespace ExpenseTracker.API.Controllers
             rng.GetBytes(randomNumber);
             return Convert.ToBase64String(randomNumber);
         }
+
+
+        [HttpPost("set-budget")]
+        public async Task<IActionResult> SetMonthlyBudget(SetBudgetDto dto)
+        {
+           var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdString))
+            {
+                return BadRequest("Kullanıcı kimliği bulunamadı.");
+            }
+            var userId = int.Parse(userIdString);
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
+            {
+                return BadRequest("Kullanıcı bulunamadı.");
+            }
+            user.MonthlyBudget = dto.Budget;
+            _context.Users.Update(user);
+            await _context.SaveChangesAsync();
+            return Ok(new
+            {
+                Message = "Aylık bütçe başarıyla güncellendi.",
+                newBudget = user.MonthlyBudget
+            });
+        }
     }
 }
 

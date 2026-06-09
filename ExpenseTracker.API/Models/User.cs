@@ -11,5 +11,7 @@
 
         public string? RefreshToken { get; set; }
         public DateTime? RefreshTokenExpiryTime { get; set; }
+
+        public decimal? MonthlyBudget { get; set; }
     }
 }
