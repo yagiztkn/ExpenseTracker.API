@@ -1,4 +1,6 @@
-﻿namespace ExpenseTracker.API.DTOs
+﻿using ExpenseTracker.API.Models;
+
+namespace ExpenseTracker.API.DTOs
 {
     public class TransactionDto
     {
@@ -6,6 +8,7 @@
         public Decimal Amount { get; set; }
         public string? Description { get; set; }
         public DateTime Date { get; set; }
+        public TransactionType Type { get; set; }
 
         public string CategoryName { get; set; } 
     }

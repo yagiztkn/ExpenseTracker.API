@@ -57,6 +57,7 @@ namespace ExpenseTracker.API.Controllers
                     Description = t.Description,
                     Date = t.Date,
                     CategoryName = t.Category != null ? t.Category.Name : "Kategori Yok",
+                    Type = t.Type,
 
                 }) 
                 .ToListAsync();

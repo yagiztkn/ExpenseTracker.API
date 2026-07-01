@@ -10,6 +10,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Reflection.Metadata.Ecma335;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ExpenseTracker.API.Controllers
 {
@@ -67,7 +68,7 @@ namespace ExpenseTracker.API.Controllers
             var refreshToken = GenerateRefreshToken();
 
             user.RefreshToken = refreshToken;
-            user.RefreshTokenExpiryTime = DateTime.Now.AddDays(7); // Refresh token 7 gün geçerli olsun
+            user.RefreshTokenExpiryTime = DateTime.Now.AddDays(7); 
 
             _context.Users.Update(user);
             await _context.SaveChangesAsync();
@@ -127,6 +128,38 @@ namespace ExpenseTracker.API.Controllers
             return Ok("Çıkış işlemi başarılı, güvenlik anahtarları imha edildi.");
         }
 
+        [Authorize]
+        [HttpPut("update-profile")]
+        public async Task<IActionResult> UpdateProfile([FromBody] ProfileUpdateDto dto)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized("Geçersiz Kullanıcı Token'ı.");
+            }
+
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
+            {
+                return NotFound("Kullanıcı Bulunamadı.");
+            }
+
+            user.Username = dto.UpdatedName;
+            user.Email = dto.UpdatedEmail;
+
+            _context.Users.Update(user);
+            await _context.SaveChangesAsync();
+
+            var newToken = CreateToken(user);
+
+            return Ok(new
+            {   
+                message = "Profil başarıyla güncellendi.",
+                token = newToken
+            });
+        }
+
         private bool VerifyPasswordHash(string password, byte[] PasswordHash, byte[] PasswordSalt)
         {
             using (var hmac = new System.Security.Cryptography.HMACSHA512(PasswordSalt))
@@ -141,7 +174,8 @@ namespace ExpenseTracker.API.Controllers
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Name, user.Username)
+                new Claim(ClaimTypes.Name, user.Username),
+                new Claim(ClaimTypes.Email, user.Email ?? "")
             };
 
             var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(
@@ -168,7 +202,7 @@ namespace ExpenseTracker.API.Controllers
         {
             using (var hmac = new System.Security.Cryptography.HMACSHA512())
             {
-                passwordSalt = hmac.Key; //Extra güvenlik için rastgele bir tuz oluşturuyoruz
+                passwordSalt = hmac.Key; 
                 passwordHash = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
             }
         }
@@ -206,6 +240,33 @@ namespace ExpenseTracker.API.Controllers
                 Message = "Aylık bütçe başarıyla güncellendi.",
                 newBudget = user.MonthlyBudget
             });
+        }
+
+        [Authorize]
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userIdClaim == null) return Unauthorized();
+
+            var user = await _context.Users.FindAsync(int.Parse(userIdClaim));
+            if (user == null) return NotFound("Kullanıcı bulunamadı.");
+
+            var isOldPasswordCorrect = VerifyPasswordHash(dto.CurrentPassword, user.PasswordHash, user.PasswordSalt);
+
+            if (!isOldPasswordCorrect)
+            {
+                return BadRequest("Mevcut şifreniz hatalı.");
+            }
+
+            CreatePassordHash(dto.NewPassword, out byte[] passwordHash, out byte[] passwordSalt);
+
+            user.PasswordHash = passwordHash;
+            user.PasswordSalt = passwordSalt;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Şifreniz başarıyla güncellendi." });
         }
     }
 }

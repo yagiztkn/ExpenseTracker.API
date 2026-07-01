@@ -1,4 +1,4 @@
-using ExpenseTracker.API.Data;
+    using ExpenseTracker.API.Data;
 using ExpenseTracker.API.Middlewares;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -18,27 +18,25 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Host.UseSerilog();
 
-// 1. Veritabanı köprümüzü kuruyoruz
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// 2. Controller (Garson) altyapısını ekliyoruz
+
 builder.Services.AddControllers();
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.AllowAnyOrigin() //Herhangi bir kaynaktan gelen isteklere izin ver
-              .AllowAnyMethod() //Herhangi bir HTTP metoduna izin ver (GET, POST, PUT, DELETE, vb.)
-              .AllowAnyHeader();//Herhangi bir HTTP başlığına izin ver
+        policy.AllowAnyOrigin() 
+              .AllowAnyMethod()
+              .AllowAnyHeader();
     });
 
 });
 
 
 
-// 3. Swagger (Arayüz) test ekranı için gereken servisleri ekliyoruz
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -71,8 +69,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 });
 
 var app = builder.Build();
-
-// 4. Uygulama geliştirme aşamasındaysa Swagger ekranını kullanıma açıyoruz
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -81,10 +77,10 @@ if (app.Environment.IsDevelopment())
 
 app.UseMiddleware<ExceptionMiddleware>();
 app.UseHttpsRedirection();
+app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 
-// 5. Yazdığımız CategoriesController gibi garsonları sahneye çağırıyoruz
 app.MapControllers();
 
 app.Run();

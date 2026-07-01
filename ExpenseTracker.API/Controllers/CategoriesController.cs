@@ -1,4 +1,5 @@
 ﻿using ExpenseTracker.API.Data;
+using ExpenseTracker.API.DTOs;
 using ExpenseTracker.API.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -24,13 +25,24 @@ namespace ExpenseTracker.API.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> AddCategory(Category category)
+        public async Task<IActionResult> AddCategory([FromBody] CreateCategoryDto categoryDto)
         {
+            if (string.IsNullOrWhiteSpace(categoryDto.CategoryName))
+            {
+                return BadRequest("Kategori adı boş olamaz.");
+            }
+
+            var category = new Category
+            {
+                Name = categoryDto.CategoryName
+                // Eğer kategoriler kullanıcıya özel tutuluyorsa buraya UserId atamasını da eklemeliyiz.
+            };
+
             _context.Categories.Add(category);
             await _context.SaveChangesAsync();
 
+            // Frontend'in yeni kategoriyi listeye ekleyebilmesi için ID'siyle birlikte geri dönüyoruz
             return Ok(category);
-
         }
     }
 }
